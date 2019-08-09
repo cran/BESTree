@@ -1,0 +1,15 @@
+citHeader("To cite BEST in publications use:")
+
+citEntry(entry = "Article",
+  title        = "BEST : A decision tree algorithm that handles missing values ",
+  author       = personList(as.person("Cedric Beaulac"),
+                   as.person("Jeffrey S. Rosenthal")),
+  journal      = "Under review",
+  year         = "2019",
+
+
+  textVersion  =
+  paste("Cedric Beaulac and Jeffrey S. Rosenthal (2019).",
+        "BEST : A decision tree algorithm that handles missing values",
+        "Under review.")
+)

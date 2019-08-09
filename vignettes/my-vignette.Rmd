@@ -1,0 +1,82 @@
+---
+title: "How to use BEST ?"
+author: "Cedric Beaulac"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{How to use BEST ?}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+# How to use BEST ?
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+library(BESTree)
+```
+
+BEST is Decision Tree algorithm that permits the user to define a precise ordering in the partitionning process. As a statistician I believe the data should speak for it self as much as possible but sometimes guiding the algorithm can be helpfull if the data set contains few observations or if we would like to utilize some expert external knowledge about the structure of the data.
+
+Here we will show how to utilize this feature to produces a Decision Tree on a data set containing missing values. 
+
+To begin let us generate a simple data set : 
+
+```{r include = TRUE}
+set.seed(100)
+n=1000
+X1 <- rnorm(n,0,sd=1)
+X2 <- rnorm(n,2,sd=2)
+X3 <- runif(n,0,1)
+X4 <- runif(n,-2,2)
+
+Y <- 1*(X1<0)*(X4<0.5)+0*(X1>0)*(X4<0.5)+1*(X3>0.5)*(X4>0.5)+0*(X3<0.5)*(X4>0.5)
+#Add some randomized Y
+RY <- sample(1000,150)
+Y[RY] <- 1-Y[RY]
+```
+
+Now, let us make one important predictor missing :
+
+```{r include = TRUE}
+
+X3[X3>0.5] <- NA
+Data <- cbind(X1,X2,X3,X4,as.factor(Y))
+
+```
+
+Now that we have our data set with missing values, let us use BEST. To begin, let's create a dummy variable indicating if $X_3$ is missing. Then let us use the ForgeVA function to build the list that will guide BETS through the data partitionning process: 
+
+```{r include = TRUE}
+
+X5 <- is.na(X3)*1
+NewData <- cbind(Data[,1:4],X5,Data[,ncol(Data)])
+
+Training <- NewData[1:800,]
+Valid <- NewData[801:900,]
+Testing <- NewData[901:1000,]
+
+d = ncol(NewData)-1 #number of predictor
+VA <- BESTree::ForgeVA(d,5,3)
+```
+
+Let us quickly examine what ForgeVA does, it might be the most confusing part of this package. The first input is the number of predictor, the second the location of the gating variable and the third is the location of the variable with missing value. The list looks like :
+
+```{r include = TRUE}
+VA
+```
+
+Where the first element ([1]) is the variable usable when begining, every variables except the ones with missing values.  Then the elements at location [d+1] in the list represent the gating abilities of individual predictor. Note in [5+1] that for the branch $X_5 < 0.5$ we will add the predictor $X_3$ (the threshold value 0.5 is included in [[6]][[1]] and the variable added on $X_5 < 0.5$ is included in [[6]][[2]]). 
+
+Finally, let's run BEST on the training set, prune it according to the validations et and check it's accuracy on the test set :
+
+```{r include = TRUE}
+Fit <- BESTree::BEST(Training,10,VA)
+PTree <- BESTree::TreePruning(Fit,Valid)
+Fit[[1]] <- PTree
+preds <- BESTree::MPredict(Testing[,1:d],Fit)
+BESTree::Acc(preds,Testing[,d+1])
+```
